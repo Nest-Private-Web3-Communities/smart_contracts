@@ -49,10 +49,8 @@ contract Nest {
         string imageUrl;
         Reaction[] reactions;
         ColorTheme theme;
-
         address[] users;
         address[] admins;
-        
         Post[] posts;
         bool flag;
         KeyAgreement[] keys;
@@ -68,14 +66,26 @@ contract Nest {
         66460405813236099615862811338380441677144783113775042729908710534400192091569;
     uint256 public DHprimitive = 7;
 
+    modifier onlyAuthorised() {
+        require(users[msg.sender].flag, "User does not have an account");
+        _;
+    }
+    modifier onlyUnauthorised() {
+        require(!users[msg.sender].flag, "User has an account");
+        _;
+    }
+    modifier communityExists(string calldata uuid) {
+        require(!communities[uuid].flag, "Community does not exist");
+        _;
+    }
+
     function newCommunity(
         string calldata name,
         string calldata description,
         string calldata imageUrl,
         string calldata theme,
         string calldata emotes
-    ) external {
-        require(users[msg.sender].flag, "User does not have an account");
+    ) external onlyAuthorised {
         string memory uuid = hashNumber(communitiesCount);
         Community storage nCommunity = communities[uuid];
 
@@ -117,14 +127,19 @@ contract Nest {
         communitiesCount += 1;
     }
 
-    function getCommunityReactionSet(string calldata communityUUID) external view returns (Reaction[] memory) {
-        require(communities[communityUUID].flag, "Community does not exist");
-
+    function getCommunityReactionSet(string calldata communityUUID)
+        external
+        view
+        communityExists(communityUUID)
+        returns (Reaction[] memory)
+    {
         return communities[communityUUID].reactions;
     }
 
-    function makeAccount(string calldata Kpub, string calldata name) external {
-        require(!users[msg.sender].flag, "User already has an account");
+    function makeAccount(string calldata Kpub, string calldata name)
+        external
+        onlyUnauthorised
+    {
         User storage nUser = users[msg.sender];
         nUser.Kpub = Kpub;
         nUser.name = name;
@@ -135,11 +150,10 @@ contract Nest {
         string calldata communityUUID,
         string[] calldata keys,
         address[] calldata correspondingUsers
-    ) external {
-        require(users[msg.sender].flag, "User does not have an account");
-        require(communities[communityUUID].flag, "Community does not exist");
-
-        KeyAgreement storage nAgreement = communities[communityUUID].keys.push();
+    ) external onlyAuthorised communityExists(communityUUID) {
+        KeyAgreement storage nAgreement = communities[communityUUID]
+            .keys
+            .push();
         nAgreement.createdAt = block.timestamp;
         nAgreement.publisher = msg.sender;
 
@@ -153,9 +167,12 @@ contract Nest {
         thisUser.communities.push(communityUUID);
     }
 
-    function getCommunitiesOfSender() public view returns (string[] memory) {
-        require(users[msg.sender].flag, "User does not have an account");
-
+    function getCommunitiesOfSender()
+        public
+        view
+        onlyAuthorised
+        returns (string[] memory)
+    {
         return users[msg.sender].communities;
     }
 
@@ -177,6 +194,10 @@ contract Nest {
             buffer[i * 2 + 1] = toHexChar(char2);
         }
         return string(buffer);
+    }
+
+    function doesSenderHaveAnAccount() public view returns (bool) {
+        return users[msg.sender].flag;
     }
 
     function toHexChar(uint8 _value) internal pure returns (bytes1) {
