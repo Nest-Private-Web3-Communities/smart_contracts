@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-contract GroupKeyExchange {
+contract Nest {
     struct User {
         string Kpub;
         string name;
@@ -49,8 +49,10 @@ contract GroupKeyExchange {
         string imageUrl;
         Reaction[] reactions;
         ColorTheme theme;
+
         address[] users;
         address[] admins;
+        
         Post[] posts;
         bool flag;
         KeyAgreement[] keys;
@@ -63,8 +65,8 @@ contract GroupKeyExchange {
     mapping(address => User) public users;
 
     uint256 public DHprime =
-        114442205032854638555706524671328947153059801427278377469756293561027497533359;
-    uint256 public DHprimitive = 2;
+        66460405813236099615862811338380441677144783113775042729908710534400192091569;
+    uint256 public DHprimitive = 7;
 
     function newCommunity(
         string calldata name,
@@ -115,10 +117,10 @@ contract GroupKeyExchange {
         communitiesCount += 1;
     }
 
-    function getCommunityReactionSet(string calldata groupUUID) external view returns (Reaction[] memory) {
-        require(communities[groupUUID].flag, "Group does not exist");
+    function getCommunityReactionSet(string calldata communityUUID) external view returns (Reaction[] memory) {
+        require(communities[communityUUID].flag, "Community does not exist");
 
-        return communities[groupUUID].reactions;
+        return communities[communityUUID].reactions;
     }
 
     function makeAccount(string calldata Kpub, string calldata name) external {
@@ -130,14 +132,14 @@ contract GroupKeyExchange {
     }
 
     function join(
-        string calldata groupUUID,
+        string calldata communityUUID,
         string[] calldata keys,
         address[] calldata correspondingUsers
     ) external {
         require(users[msg.sender].flag, "User does not have an account");
-        require(communities[groupUUID].flag, "Group does not exist");
+        require(communities[communityUUID].flag, "Community does not exist");
 
-        KeyAgreement storage nAgreement = communities[groupUUID].keys.push();
+        KeyAgreement storage nAgreement = communities[communityUUID].keys.push();
         nAgreement.createdAt = block.timestamp;
         nAgreement.publisher = msg.sender;
 
@@ -145,10 +147,10 @@ contract GroupKeyExchange {
             nAgreement.E_Keys[correspondingUsers[i]] = keys[i];
         }
 
-        communities[groupUUID].users.push(msg.sender);
+        communities[communityUUID].users.push(msg.sender);
 
         User storage thisUser = users[msg.sender];
-        thisUser.communities.push(groupUUID);
+        thisUser.communities.push(communityUUID);
     }
 
     function getCommunitiesOfSender() public view returns (string[] memory) {
