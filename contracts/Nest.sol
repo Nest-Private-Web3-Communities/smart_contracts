@@ -5,13 +5,14 @@ contract Nest {
     struct User {
         string Kpub;
         string name;
+        string imageUrl;
+        uint256 createdAt;
         string[] communities;
         bool flag;
     }
 
     struct KeyAgreement {
         uint256 createdAt;
-        uint256 expiryEpoch;
         address publisher;
         mapping(address => string) E_Keys;
     }
@@ -50,11 +51,11 @@ contract Nest {
         Reaction[] reactions;
         ColorTheme theme;
         address[] users;
-        address[] admins;
+        mapping(address => uint8) participationStage;
+        // ParticipationStage : 0 -> unrelated; 1 -> invited; 2 -> member; 3 -> admin
         Post[] posts;
         bool flag;
         KeyAgreement[] keys;
-        // uint256 keyExpiryEpoch;
     }
 
     mapping(string => Community) public communities;
@@ -75,7 +76,7 @@ contract Nest {
         _;
     }
     modifier communityExists(string calldata uuid) {
-        require(!communities[uuid].flag, "Community does not exist");
+        require(communities[uuid].flag, "Community does not exist");
         _;
     }
 
@@ -118,13 +119,23 @@ contract Nest {
         }
 
         nCommunity.users.push(msg.sender);
-        nCommunity.admins.push(msg.sender);
+        nCommunity.participationStage[msg.sender] = 3;
         nCommunity.flag = true;
 
         User storage thisUser = users[msg.sender];
         thisUser.communities.push(uuid);
 
         communitiesCount += 1;
+    }
+
+    function checkParticipationStage(string calldata communityUUID)
+        external
+        view
+        onlyAuthorised
+        communityExists(communityUUID)
+        returns (uint8)
+    {
+        return communities[communityUUID].participationStage[msg.sender];
     }
 
     function getCommunityReactionSet(string calldata communityUUID)
@@ -136,13 +147,16 @@ contract Nest {
         return communities[communityUUID].reactions;
     }
 
-    function makeAccount(string calldata Kpub, string calldata name)
-        external
-        onlyUnauthorised
-    {
+    function createAccount(
+        string calldata Kpub,
+        string calldata name,
+        string calldata imageUrl
+    ) external onlyUnauthorised {
         User storage nUser = users[msg.sender];
         nUser.Kpub = Kpub;
         nUser.name = name;
+        nUser.imageUrl = imageUrl;
+        nUser.createdAt = block.timestamp;
         nUser.flag = true;
     }
 
@@ -151,6 +165,17 @@ contract Nest {
         string[] calldata keys,
         address[] calldata correspondingUsers
     ) external onlyAuthorised communityExists(communityUUID) {
+        uint8 participation = communities[communityUUID].participationStage[
+            msg.sender
+        ];
+
+        require(
+            participation == 1,
+            participation == 0
+                ? "You are not invited to join this community, please contact an admin"
+                : "You are already a part of this community"
+        );
+
         KeyAgreement storage nAgreement = communities[communityUUID]
             .keys
             .push();
@@ -162,6 +187,7 @@ contract Nest {
         }
 
         communities[communityUUID].users.push(msg.sender);
+        communities[communityUUID].participationStage[msg.sender] = 2;
 
         User storage thisUser = users[msg.sender];
         thisUser.communities.push(communityUUID);
