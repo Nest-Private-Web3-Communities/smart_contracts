@@ -2,15 +2,6 @@
 pragma solidity ^0.8.0;
 
 contract Nest {
-    struct User {
-        string Kpub;
-        string name;
-        string imageUrl;
-        uint256 createdAt;
-        string[] communities;
-        bool flag;
-    }
-
     struct KeyAgreement {
         uint256 createdAt;
         address publisher;
@@ -33,8 +24,8 @@ contract Nest {
     }
 
     struct Post {
-        string title;
-        string content;
+        string data;
+        uint256 createdAt;
         Comment[] comments;
         mapping(address => uint8) reactions;
     }
@@ -44,23 +35,36 @@ contract Nest {
         string color;
     }
 
-    struct Community {
-        string name;
+    struct Network {
+        string image;
         string description;
-        string imageUrl;
-        Reaction[] reactions;
-        ColorTheme theme;
-        address[] users;
-        mapping(address => uint8) participationStage;
-        // ParticipationStage : 0 -> unrelated; 1 -> invited; 2 -> member; 3 -> admin
-        Post[] posts;
         bool flag;
-        KeyAgreement[] keys;
+        uint256 postsCount;
+        Post[] posts;
+    }
+
+    string name;
+    string description;
+    string imageUrl;
+    Reaction[] reactions;
+    ColorTheme theme;
+    address[] users;
+    mapping(address => uint8) participationStage;
+    KeyAgreement[] keys;
+    string[] networkNames;
+    mapping(string => Network) networks;
+    bool flag;
+
+    struct User {
+        string Kpub;
+        string name;
+        string imageUrl;
+        uint256 createdAt;
+        string[] communities;
+        bool flag;
     }
 
     mapping(string => Community) public communities;
-    uint256 communitiesCount = 0;
-
     mapping(address => User) public users;
 
     uint256 public DHprime =
@@ -104,6 +108,11 @@ contract Nest {
         nCommunityTheme.back = theme[60:71];
         // nCommunity.keyExpiryEpoch = keyExpiryEpoch;
 
+        Network storage defaultNetwork = nCommunity.networks["General"];
+        defaultNetwork.flag = true;
+        defaultNetwork.description = "Default network";
+        defaultNetwork.image = "";
+
         bool emotesEnd = false;
         uint8 i = 0;
 
@@ -128,25 +137,6 @@ contract Nest {
         communitiesCount += 1;
     }
 
-    function checkParticipationStage(string calldata communityUUID)
-        external
-        view
-        onlyAuthorised
-        communityExists(communityUUID)
-        returns (uint8)
-    {
-        return communities[communityUUID].participationStage[msg.sender];
-    }
-
-    function getCommunityReactionSet(string calldata communityUUID)
-        external
-        view
-        communityExists(communityUUID)
-        returns (Reaction[] memory)
-    {
-        return communities[communityUUID].reactions;
-    }
-
     function createAccount(
         string calldata Kpub,
         string calldata name,
@@ -158,39 +148,6 @@ contract Nest {
         nUser.imageUrl = imageUrl;
         nUser.createdAt = block.timestamp;
         nUser.flag = true;
-    }
-
-    function join(
-        string calldata communityUUID,
-        string[] calldata keys,
-        address[] calldata correspondingUsers
-    ) external onlyAuthorised communityExists(communityUUID) {
-        uint8 participation = communities[communityUUID].participationStage[
-            msg.sender
-        ];
-
-        require(
-            participation == 1,
-            participation == 0
-                ? "You are not invited to join this community, please contact an admin"
-                : "You are already a part of this community"
-        );
-
-        KeyAgreement storage nAgreement = communities[communityUUID]
-            .keys
-            .push();
-        nAgreement.createdAt = block.timestamp;
-        nAgreement.publisher = msg.sender;
-
-        for (uint256 i = 0; i < keys.length; i++) {
-            nAgreement.E_Keys[correspondingUsers[i]] = keys[i];
-        }
-
-        communities[communityUUID].users.push(msg.sender);
-        communities[communityUUID].participationStage[msg.sender] = 2;
-
-        User storage thisUser = users[msg.sender];
-        thisUser.communities.push(communityUUID);
     }
 
     function getCommunitiesOfSender()
@@ -248,5 +205,134 @@ contract Nest {
         returns (bool)
     {
         return memcmp(bytes(a), bytes(b));
+    }
+
+    modifier networkExistsInCommunity(
+        string calldata network,
+        string calldata uuid
+    ) {
+        require(
+            communities[uuid].networks[network].flag,
+            "Network does not exist for specified community UUID"
+        );
+        _;
+    }
+    modifier onlyAdmin(string calldata uuid) {
+        require(
+            communities[uuid].participationStage[msg.sender] == 3,
+            "This action is restricted to admins of this community"
+        );
+        _;
+    }
+    modifier onlyMember(string calldata uuid) {
+        require(
+            communities[uuid].participationStage[msg.sender] >= 2,
+            "This action is restricted to members of this community"
+        );
+        _;
+    }
+
+    function inviteToCommunity(
+        string calldata communityUUID,
+        address userToInvite
+    ) external onlyAdmin(communityUUID) {
+        require(
+            communities[communityUUID].participationStage[msg.sender] == 0,
+            "This user is already invited or already a member"
+        );
+        communities[communityUUID].participationStage[userToInvite] = 1;
+    }
+
+    function checkParticipationStage(string calldata communityUUID)
+        external
+        view
+        onlyAuthorised
+        communityExists(communityUUID)
+        returns (uint8)
+    {
+        return communities[communityUUID].participationStage[msg.sender];
+    }
+
+    function getCommunityReactionSet(string calldata communityUUID)
+        external
+        view
+        communityExists(communityUUID)
+        returns (Reaction[] memory)
+    {
+        return communities[communityUUID].reactions;
+    }
+
+    function makePost(
+        string calldata communityUUID,
+        string calldata networkName,
+        string calldata data
+    )
+        external
+        communityExists(communityUUID)
+        onlyMember(communityUUID)
+        networkExistsInCommunity(networkName, communityUUID)
+    {
+        Network storage network = communities[communityUUID].networks[
+            networkName
+        ];
+        network.postsCount += 1;
+        Post storage nPost = network.posts[network.postsCount];
+        nPost.createdAt = block.timestamp;
+        nPost.data = data;
+    }
+
+    function getPostsCountByNetwork(
+        string calldata communityUUID,
+        string calldata network
+    )
+        external
+        view
+        communityExists(communityUUID)
+        onlyMember(communityUUID)
+        networkExistsInCommunity(network, communityUUID)
+        returns (uint256)
+    {
+        return communities[communityUUID].networks[network].postsCount;
+    }
+
+    function getPostData(
+        string calldata communityUUID,
+        string calldata network,
+        uint256 post
+    ) external view returns (Post memory) {
+        return communities[communityUUID].networks[network].posts[post];
+    }
+
+    function joinCommunity(
+        string calldata communityUUID,
+        string[] calldata keys,
+        address[] calldata correspondingUsers
+    ) external onlyAuthorised communityExists(communityUUID) {
+        uint8 participation = communities[communityUUID].participationStage[
+            msg.sender
+        ];
+
+        require(
+            participation == 1,
+            participation == 0
+                ? "You are not invited to join this community, please contact an admin"
+                : "You are already a part of this community"
+        );
+
+        KeyAgreement storage nAgreement = communities[communityUUID]
+            .keys
+            .push();
+        nAgreement.createdAt = block.timestamp;
+        nAgreement.publisher = msg.sender;
+
+        for (uint256 i = 0; i < keys.length; i++) {
+            nAgreement.E_Keys[correspondingUsers[i]] = keys[i];
+        }
+
+        communities[communityUUID].users.push(msg.sender);
+        communities[communityUUID].participationStage[msg.sender] = 2;
+
+        User storage thisUser = users[msg.sender];
+        thisUser.communities.push(communityUUID);
     }
 }
