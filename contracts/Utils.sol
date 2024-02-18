@@ -26,4 +26,9 @@ contract Utils {
         }
         return string(result);
     }
+
+    function strlen(string memory s) public pure returns (uint256) {
+        bytes memory b = bytes(s);
+        return b.length;
+    }
 }

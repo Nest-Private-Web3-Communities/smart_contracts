@@ -11,15 +11,6 @@ contract Community {
         mapping(address => string) E_keys;
     }
 
-    struct ColorTheme {
-        string primary;
-        string secondary;
-        string background;
-        string foreground;
-        string front;
-        string back;
-    }
-
     struct Comment {
         address sender;
         uint256 createdAt;
@@ -53,8 +44,8 @@ contract Community {
     string public name;
     string public description;
     string public imageUrl;
-    ColorTheme public theme;
-    Reaction[] public reactions;
+    string public theme;
+    string public reactions;
     Post[] public posts;
 
     mapping(address => uint8) public participationStage;
@@ -102,46 +93,36 @@ contract Community {
         string memory _description,
         string memory _imageUrl,
         string memory _theme,
-        string memory _emotes
+        string memory _emotes,
+        string memory _Kmaster
     ) {
         owner = msg.sender;
         nest = Nest(_nestAddress);
-        utils = nest.utils();
-
         require(
             nest.getUserByAddress(msg.sender).flag,
             "You must have a Nest account to start creating communities"
         );
+        utils = nest.utils();
+
         nest.registerCommunityForUser(address(this), msg.sender);
 
         name = _name;
         description = _description;
         imageUrl = _imageUrl;
 
-        theme.primary = utils.substring(_theme, 0, 11);
-        theme.secondary = utils.substring(_theme, 12, 23);
-        theme.background = utils.substring(_theme, 24, 35);
-        theme.foreground = utils.substring(_theme, 36, 47);
-        theme.front = utils.substring(_theme, 48, 59);
-        theme.back = utils.substring(_theme, 60, 71);
+        theme= _theme;
 
         Network storage defaultNetwork = networks["General"];
         defaultNetwork.flag = true;
         defaultNetwork.description = "Default network";
         defaultNetwork.image = "";
 
-        bool emotesEnd = false;
-        uint8 i = 0;
-        while (!emotesEnd && i + 16 < 100) {
-            if (utils.strcmp("nil", utils.substring(_emotes, i, i + 3))) {
-                emotesEnd = true;
-            } else {
-                Reaction storage nEmote = reactions.push();
-                nEmote.name = utils.substring(_emotes, i, i + 3);
-                nEmote.color = utils.substring(_emotes, i + 4, i + 16);
-                i += 16;
-            }
-        }
+        KeyAgreement storage nAgreement = keys.push();
+        nAgreement.createdAt = block.timestamp;
+        nAgreement.publisher = msg.sender;
+        nAgreement.E_keys[msg.sender] = _Kmaster;
+
+        reactions = _emotes;
 
         members.push(msg.sender);
         participationStage[msg.sender] = 3;
@@ -197,10 +178,6 @@ contract Community {
         returns (string memory)
     {
         return keys[_agreementId].E_keys[msg.sender];
-    }
-
-    function getReactions() public view returns (Reaction[] memory) {
-        return reactions;
     }
 
     function getMemberAddresses() public view returns (address[] memory) {
