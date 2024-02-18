@@ -18,9 +18,9 @@ contract Nest {
 
     mapping(address => User) public users;
 
-    uint256 public DHprime =
-        66460405813236099615862811338380441677144783113775042729908710534400192091569;
-    uint256 public DHprimitive = 7;
+    uint48 public DHprime =
+        168167339945089;
+    uint48 public DHprimitive = 17;
 
     modifier onlyAuthorised() {
         require(users[msg.sender].flag, "User does not have an account");

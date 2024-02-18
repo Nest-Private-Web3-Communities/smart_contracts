@@ -8,7 +8,6 @@ contract Community {
     struct KeyAgreement {
         uint256 createdAt;
         address publisher;
-        uint256 keyCount;
         mapping(address => string) E_keys;
     }
 
@@ -31,10 +30,12 @@ contract Community {
         string data;
         uint256 createdAt;
         Comment[] comments;
+        mapping(address => uint256) reactions;
+        address[] reactors;
     }
 
     struct Reaction {
-        string icon;
+        string name;
         string color;
     }
 
@@ -42,19 +43,19 @@ contract Community {
         string image;
         string description;
         bool flag;
-        uint256 postsCount;
-        Post[] posts;
+        uint256[] posts;
     }
 
-    address owner;
+    address public owner;
     Nest public nest;
     Utils utils;
 
-    string name;
-    string description;
-    string imageUrl;
-    ColorTheme theme;
-    Reaction[] reactions;
+    string public name;
+    string public description;
+    string public imageUrl;
+    ColorTheme public theme;
+    Reaction[] public reactions;
+    Post[] public posts;
 
     mapping(address => uint8) public participationStage;
     address[] public members;
@@ -66,9 +67,9 @@ contract Community {
 
     event KeysCycled();
 
-    modifier networkExists(string calldata network) {
+    modifier networkExists(string calldata _network) {
         require(
-            networks[network].flag,
+            networks[_network].flag,
             "Network does not exist in the community"
         );
         _;
@@ -136,7 +137,7 @@ contract Community {
                 emotesEnd = true;
             } else {
                 Reaction storage nEmote = reactions.push();
-                nEmote.icon = utils.substring(_emotes, i, i + 3);
+                nEmote.name = utils.substring(_emotes, i, i + 3);
                 nEmote.color = utils.substring(_emotes, i + 4, i + 16);
                 i += 16;
             }
@@ -146,12 +147,12 @@ contract Community {
         participationStage[msg.sender] = 3;
     }
 
-    function invite(address userToInvite) external onlyAdmin {
+    function invite(address _userToInvite) external onlyAdmin {
         require(
-            participationStage[userToInvite] == 0,
+            participationStage[_userToInvite] == 0,
             "This user is already invited or already a member"
         );
-        participationStage[userToInvite] = 1;
+        participationStage[_userToInvite] = 1;
     }
 
     function join(
@@ -170,13 +171,13 @@ contract Community {
         nAgreement.createdAt = block.timestamp;
         nAgreement.publisher = msg.sender;
 
-        for (uint256 i = 0; i < keys.length; i++) {
+        for (uint256 i = 0; i < _keys.length; i++) {
             nAgreement.E_keys[_correspondingUsers[i]] = _keys[i];
         }
 
         members.push(msg.sender);
         participationStage[msg.sender] = 2;
-        
+
         emit KeysCycled();
 
         nest.registerCommunityForUser(address(this), msg.sender);
@@ -190,42 +191,57 @@ contract Community {
         return keys.length;
     }
 
-    function getKeyFromAgreement(uint256 agreementId)
+    function getKeyFromAgreement(uint256 _agreementId)
         public
         view
         returns (string memory)
     {
-        return keys[agreementId].E_keys[msg.sender];
+        return keys[_agreementId].E_keys[msg.sender];
     }
 
-    function makePost(string calldata networkName, string calldata data)
+    function getReactions() public view returns (Reaction[] memory) {
+        return reactions;
+    }
+
+    function getMemberAddresses() public view returns (address[] memory) {
+        return members;
+    }
+
+    function getNetworkNames() public view returns (string[] memory) {
+        return networkNames;
+    }
+
+    function makePost(string calldata _networkName, string calldata _data)
         external
         onlyAuthorised
         onlyMember
-        networkExists(networkName)
+        networkExists(_networkName)
     {
-        Network storage network = networks[networkName];
-        network.postsCount += 1;
-        Post storage nPost = network.posts[network.postsCount];
+        networks[_networkName].posts.push(posts.length);
+        Post storage nPost = posts.push();
         nPost.createdAt = block.timestamp;
-        nPost.data = data;
+        nPost.data = _data;
     }
 
-    function getPostsCountByNetwork(string calldata network)
+    function commentOnPost(uint256 _postId, string calldata _content)
         external
-        view
+        onlyAuthorised
         onlyMember
-        networkExists(network)
-        returns (uint256)
     {
-        return networks[network].postsCount;
+        Post storage post = posts[_postId];
+        Comment storage nComment = post.comments.push();
+        nComment.sender = msg.sender;
+        nComment.createdAt = block.timestamp;
+        nComment.content = _content;
     }
 
-    function getPostData(string calldata network, uint256 post)
+    function reactToPost(uint256 _postId, uint8 _reactionId)
         external
-        view
-        returns (Post memory)
+        onlyAuthorised
+        onlyMember
     {
-        return networks[network].posts[post];
+        Post storage post = posts[_postId];
+        post.reactors.push(msg.sender);
+        post.reactions[msg.sender] = _reactionId;
     }
 }
