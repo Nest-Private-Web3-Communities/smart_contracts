@@ -57,6 +57,8 @@ contract Community {
     mapping(string => Network) public networks;
     string[] public networkNames;
 
+    mapping(address => uint256) joined;
+
     KeyAgreement[] public keys;
 
     event KeysCycled();
@@ -166,10 +168,16 @@ contract Community {
 
         members.push(msg.sender);
         participationStage[msg.sender] = 2;
+        joined[msg.sender] = block.timestamp;
 
         emit KeysCycled();
 
         nest.registerCommunityForUser(address(this), msg.sender);
+    }
+
+    function makeAdmin(address _user) public onlyAuthorised onlyAdmin {
+        require(participationStage[_user] == 2, "User not in community");
+        participationStage[_user] = 3;
     }
 
     function getMemberCount() public view returns (uint256) {
