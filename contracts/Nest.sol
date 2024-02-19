@@ -18,8 +18,8 @@ contract Nest {
 
     mapping(address => User) public users;
 
-    uint48 public DHprime = 168167339945089;
-    uint48 public DHprimitive = 17;
+    uint48 public DHprime;
+    uint48 public DHprimitive;
 
     modifier onlyAuthorised() {
         require(users[msg.sender].flag, "User does not have an account");
@@ -30,8 +30,10 @@ contract Nest {
         _;
     }
 
-    constructor() {
+    constructor(uint48 _DHprime, uint48 _DHprimitive) {
         utils = new Utils();
+        DHprime = _DHprime;
+        DHprimitive = _DHprimitive;
     }
 
     function createAccount(

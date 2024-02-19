@@ -57,7 +57,7 @@ contract Community {
     mapping(string => Network) public networks;
     string[] public networkNames;
 
-    mapping(address => uint256) joined;
+    mapping(address => uint256) public joined;
 
     KeyAgreement[] public keys;
 
