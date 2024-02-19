@@ -271,8 +271,9 @@ contract Community {
         uint8 _reactionId
     ) external onlyAuthorised onlyMember {
         Post storage post = posts[_postId];
-        post.reactors.push(msg.sender);
-        post.reactions[msg.sender] = _reactionId;
+        if (post.reactions[msg.sender] == 0) post.reactors.push(msg.sender);
+
+        post.reactions[msg.sender] = _reactionId + 1;
     }
 
     function getReactorsOnPost(
