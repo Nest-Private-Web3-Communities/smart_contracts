@@ -66,7 +66,7 @@ contract Community {
         _;
     }
     modifier networkNotExists(string calldata _network) {
-        require(networks[_network].flag, "Network exists in the community");
+        require(!networks[_network].flag, "Network exists in community");
         _;
     }
     modifier onlyAdmin() {
