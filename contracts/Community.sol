@@ -23,7 +23,7 @@ contract Community {
         string data;
         string networkName;
         Comment[] comments;
-        mapping(address => uint256) reactions;
+        mapping(address => uint8) reactions;
         address[] reactors;
     }
 
@@ -253,6 +253,19 @@ contract Community {
         nComment.content = _content;
     }
 
+    function getCommentCountOnPost(
+        uint256 _postId
+    ) external view onlyAuthorised onlyMember returns (uint256) {
+        return posts[_postId].comments.length;
+    }
+
+    function getCommentOnPostById(
+        uint256 _postId,
+        uint256 _commentId
+    ) external view onlyAuthorised onlyMember returns (Comment memory) {
+        return posts[_postId].comments[_commentId];
+    }
+
     function reactToPost(
         uint256 _postId,
         uint8 _reactionId
@@ -260,5 +273,18 @@ contract Community {
         Post storage post = posts[_postId];
         post.reactors.push(msg.sender);
         post.reactions[msg.sender] = _reactionId;
+    }
+
+    function getReactorsOnPost(
+        uint256 _postId
+    ) external view onlyAuthorised onlyMember returns (address[] memory) {
+        return posts[_postId].reactors;
+    }
+
+    function getReactionOnPostByUser(
+        uint256 _postId,
+        address _user
+    ) external view returns (uint8) {
+        return posts[_postId].reactions[_user];
     }
 }
