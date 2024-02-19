@@ -6,7 +6,7 @@ import "./Utils.sol";
 
 contract Nest {
     struct User {
-        string Kpub;
+        uint48 Kpub;
         string name;
         string imageUrl;
         uint256 createdAt;
@@ -35,7 +35,7 @@ contract Nest {
     }
 
     function createAccount(
-        string calldata Kpub,
+        uint48 Kpub,
         string calldata name,
         string calldata imageUrl
     ) external onlyUnauthorised {

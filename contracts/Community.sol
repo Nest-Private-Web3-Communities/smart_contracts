@@ -8,7 +8,7 @@ contract Community {
     struct KeyAgreement {
         uint256 createdAt;
         address publisher;
-        mapping(address => string) E_keys;
+        mapping(address => uint48) E_keys;
     }
 
     struct Comment {
@@ -18,8 +18,10 @@ contract Community {
     }
 
     struct Post {
-        string data;
         uint256 createdAt;
+        address publisher;
+        string data;
+        string networkName;
         Comment[] comments;
         mapping(address => uint256) reactions;
         address[] reactors;
@@ -47,6 +49,7 @@ contract Community {
     string public theme;
     string public reactions;
     Post[] public posts;
+    mapping(address => uint256[]) userPosts;
 
     mapping(address => uint8) public participationStage;
     address[] public members;
@@ -98,7 +101,7 @@ contract Community {
         string memory _imageUrl,
         string memory _theme,
         string memory _emotes,
-        string memory _Kmaster
+        uint48 _Kmaster
     ) {
         owner = msg.sender;
         nest = Nest(_nestAddress);
@@ -142,7 +145,7 @@ contract Community {
     }
 
     function join(
-        string[] calldata _keys,
+        uint48[] calldata _keys,
         address[] calldata _correspondingUsers
     ) external onlyAuthorised {
         uint8 participation = participationStage[msg.sender];
@@ -183,7 +186,7 @@ contract Community {
 
     function getKeyFromAgreement(
         uint256 _agreementId
-    ) public view returns (string memory) {
+    ) public view returns (uint48) {
         return keys[_agreementId].E_keys[msg.sender];
     }
 
@@ -207,14 +210,36 @@ contract Community {
         networkNames.push(_networkName);
     }
 
+    function getPostsByNetwork(
+        string calldata _networkName
+    )
+        external
+        view
+        onlyAuthorised
+        onlyMember
+        networkExists(_networkName)
+        returns (uint256[] memory)
+    {
+        return networks[_networkName].posts;
+    }
+
+    function getPostsByUser(
+        address _user
+    ) external view onlyAuthorised onlyMember returns (uint256[] memory) {
+        return userPosts[_user];
+    }
+
     function makePost(
         string calldata _networkName,
         string calldata _data
     ) external onlyAuthorised onlyMember networkExists(_networkName) {
         networks[_networkName].posts.push(posts.length);
+        userPosts[msg.sender].push(posts.length);
         Post storage nPost = posts.push();
         nPost.createdAt = block.timestamp;
         nPost.data = _data;
+        nPost.publisher = msg.sender;
+        nPost.networkName = _networkName;
     }
 
     function commentOnPost(
