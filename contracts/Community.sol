@@ -65,6 +65,10 @@ contract Community {
         );
         _;
     }
+    modifier networkNotExists(string calldata _network) {
+        require(networks[_network].flag, "Network exists in the community");
+        _;
+    }
     modifier onlyAdmin() {
         require(
             participationStage[msg.sender] == 3,
@@ -110,9 +114,10 @@ contract Community {
         description = _description;
         imageUrl = _imageUrl;
 
-        theme= _theme;
+        theme = _theme;
 
-        Network storage defaultNetwork = networks["General"];
+        networkNames.push("General");
+        Network storage defaultNetwork = networks[networkNames[0]];
         defaultNetwork.flag = true;
         defaultNetwork.description = "Default network";
         defaultNetwork.image = "";
@@ -168,15 +173,17 @@ contract Community {
         return members.length;
     }
 
+    function getNetworkCount() public view returns (uint256) {
+        return networkNames.length;
+    }
+
     function getKeyCount() public view returns (uint256) {
         return keys.length;
     }
 
-    function getKeyFromAgreement(uint256 _agreementId)
-        public
-        view
-        returns (string memory)
-    {
+    function getKeyFromAgreement(
+        uint256 _agreementId
+    ) public view returns (string memory) {
         return keys[_agreementId].E_keys[msg.sender];
     }
 
@@ -188,23 +195,32 @@ contract Community {
         return networkNames;
     }
 
-    function makePost(string calldata _networkName, string calldata _data)
-        external
-        onlyAuthorised
-        onlyMember
-        networkExists(_networkName)
-    {
+    function createNetwork(
+        string calldata _networkName,
+        string calldata _description,
+        string calldata _imageUrl
+    ) external onlyAuthorised onlyAdmin networkNotExists(_networkName) {
+        Network storage nNetwork = networks[_networkName];
+        nNetwork.flag = true;
+        nNetwork.image = _imageUrl;
+        nNetwork.description = _description;
+        networkNames.push(_networkName);
+    }
+
+    function makePost(
+        string calldata _networkName,
+        string calldata _data
+    ) external onlyAuthorised onlyMember networkExists(_networkName) {
         networks[_networkName].posts.push(posts.length);
         Post storage nPost = posts.push();
         nPost.createdAt = block.timestamp;
         nPost.data = _data;
     }
 
-    function commentOnPost(uint256 _postId, string calldata _content)
-        external
-        onlyAuthorised
-        onlyMember
-    {
+    function commentOnPost(
+        uint256 _postId,
+        string calldata _content
+    ) external onlyAuthorised onlyMember {
         Post storage post = posts[_postId];
         Comment storage nComment = post.comments.push();
         nComment.sender = msg.sender;
@@ -212,11 +228,10 @@ contract Community {
         nComment.content = _content;
     }
 
-    function reactToPost(uint256 _postId, uint8 _reactionId)
-        external
-        onlyAuthorised
-        onlyMember
-    {
+    function reactToPost(
+        uint256 _postId,
+        uint8 _reactionId
+    ) external onlyAuthorised onlyMember {
         Post storage post = posts[_postId];
         post.reactors.push(msg.sender);
         post.reactions[msg.sender] = _reactionId;

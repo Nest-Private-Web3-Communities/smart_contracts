@@ -6,11 +6,10 @@ contract Utils {
         return (a.length == b.length) && (keccak256(a) == keccak256(b));
     }
 
-    function strcmp(string memory a, string memory b)
-        public
-        pure
-        returns (bool)
-    {
+    function strcmp(
+        string memory a,
+        string memory b
+    ) public pure returns (bool) {
         return memcmp(bytes(a), bytes(b));
     }
 

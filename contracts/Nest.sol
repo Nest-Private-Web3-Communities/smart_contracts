@@ -18,8 +18,7 @@ contract Nest {
 
     mapping(address => User) public users;
 
-    uint48 public DHprime =
-        168167339945089;
+    uint48 public DHprime = 168167339945089;
     uint48 public DHprimitive = 17;
 
     modifier onlyAuthorised() {
@@ -61,17 +60,21 @@ contract Nest {
         return users[msg.sender].flag;
     }
 
-    function registerCommunityForUser(address community, address userAddress) public returns(bool) {
-        require(tx.origin == userAddress, "Can't register communities for other users");
+    function registerCommunityForUser(
+        address community,
+        address userAddress
+    ) public returns (bool) {
+        require(
+            tx.origin == userAddress,
+            "Can't register communities for other users"
+        );
         users[userAddress].communities.push(community);
         return true;
     }
 
-    function getUserByAddress(address userAddress)
-        public
-        view
-        returns (User memory)
-    {
+    function getUserByAddress(
+        address userAddress
+    ) public view returns (User memory) {
         return users[userAddress];
     }
 }
