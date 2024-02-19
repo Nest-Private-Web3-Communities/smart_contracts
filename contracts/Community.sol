@@ -8,7 +8,7 @@ contract Community {
     struct KeyAgreement {
         uint256 createdAt;
         address publisher;
-        mapping(address => uint48) E_keys;
+        mapping(address => string) E_keys;
     }
 
     struct Comment {
@@ -101,7 +101,7 @@ contract Community {
         string memory _imageUrl,
         string memory _theme,
         string memory _emotes,
-        uint48 _Kmaster
+        string memory _Kmaster
     ) {
         owner = msg.sender;
         nest = Nest(_nestAddress);
@@ -145,7 +145,7 @@ contract Community {
     }
 
     function join(
-        uint48[] calldata _keys,
+        string[] calldata _keys,
         address[] calldata _correspondingUsers
     ) external onlyAuthorised {
         uint8 participation = participationStage[msg.sender];
@@ -186,7 +186,7 @@ contract Community {
 
     function getKeyFromAgreement(
         uint256 _agreementId
-    ) public view returns (uint48) {
+    ) public view returns (string memory) {
         return keys[_agreementId].E_keys[msg.sender];
     }
 
